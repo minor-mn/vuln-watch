@@ -5,8 +5,9 @@ class CvesControllerTest < ActionDispatch::IntegrationTest
 
   setup do
     @cve = ingest(cna_vectors: [ V31_NETWORK ]).cve
-    CveEvaluation.new(analyzer: CveAnalyzer.new(client: FakeOpenaiClient.new(capabilities: { remote_code_execution: "true" })),
-      notifier: EmergencyNotifier.new(logger: Logger.new(nil))).call(@cve)
+    client = FakeOpenaiClient.new(capabilities: { remote_code_execution: "true" }, translation: "訳文")
+    CveEvaluation.new(analyzer: CveAnalyzer.new(client:), notifier: EmergencyNotifier.new(logger: Logger.new(nil)),
+      translator: MatchedTextTranslator.new(client:)).call(@cve)
     @possible = ingest(id: "CVE-2026-0002", vendor: "acme", product: "widget", description: "Uses Postgres.").cve
   end
 
@@ -27,6 +28,7 @@ class CvesControllerTest < ActionDispatch::IntegrationTest
     assert_match "AV:N / PR:N / UI:N", response.body
     assert_match "概要", response.body
     assert_match "Emergency（緊急） と判定した", response.body
+    assert_match "訳文", response.body
   end
 
   test "shows a CVE not judged yet" do

@@ -26,3 +26,7 @@ products:
       - opensearch-project
     aliases:
       - opensearch
+
+  - name: Metabase
+    vendors:
+      - metabase

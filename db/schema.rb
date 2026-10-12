@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_10_08_000009) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_13_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -129,6 +129,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_08_000009) do
     t.string "ai_affects_product"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "matched_text_ja"
     t.index ["cve_id", "product_name", "rule"], name: "index_product_matches_on_cve_id_and_product_name_and_rule", unique: true
     t.index ["cve_id"], name: "index_product_matches_on_cve_id"
   end

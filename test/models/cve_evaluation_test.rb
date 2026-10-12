@@ -14,7 +14,7 @@ class CveEvaluationTest < ActiveSupport::TestCase
   teardown { ENV["MAIL_TO"] = @mail_to }
 
   def evaluation(client)
-    CveEvaluation.new(analyzer: CveAnalyzer.new(client:))
+    CveEvaluation.new(analyzer: CveAnalyzer.new(client:), translator: MatchedTextTranslator.new(client:))
   end
 
   test "mails a matched emergency only once, even after it stops and starts being one" do
