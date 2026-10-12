@@ -1,0 +1,28 @@
+# Products to watch. Matching is case-insensitive.
+#
+#   name:    product name (also used for display)
+#   vendors: vendor names as they appear in CVE `affected[].vendor`
+#   aliases: other names as they appear in CVE `affected[].product` or descriptions
+products:
+  - name: Ruby on Rails
+    vendors:
+      - rails
+    aliases:
+      - rails
+      - ruby on rails
+      - actionpack
+      - activerecord
+      - activesupport
+
+  - name: PostgreSQL
+    vendors:
+      - postgresql
+    aliases:
+      - postgres
+
+  - name: OpenSearch
+    vendors:
+      - opensearch
+      - opensearch-project
+    aliases:
+      - opensearch

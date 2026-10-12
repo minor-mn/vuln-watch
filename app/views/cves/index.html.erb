@@ -1,0 +1,60 @@
+<% content_for :title, "Vuln Watch" %>
+
+<div class="space-y-8">
+  <% @sections.each do |result, cves| %>
+    <section id="<%= result %>">
+      <h2 class="mb-2 flex items-center gap-2 text-base font-semibold">
+        <%= judgement_badge(result) %>
+        <span class="text-sm font-normal text-gray-500"><%= cves.size %> 件</span>
+      </h2>
+
+      <% if cves.empty? %>
+        <p class="rounded border border-dashed border-gray-300 bg-white px-4 py-3 text-sm text-gray-500">該当する CVE はありません。</p>
+      <% else %>
+        <div class="overflow-x-auto rounded border border-gray-200 bg-white">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-left text-xs text-gray-500">
+              <tr>
+                <th class="px-3 py-2 font-medium">CVE</th>
+                <th class="px-3 py-2 font-medium">製品</th>
+                <th class="px-3 py-2 font-medium">採用評価</th>
+                <th class="px-3 py-2 font-medium">攻撃能力</th>
+                <th class="px-3 py-2 font-medium">公開日</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <% cves.each do |cve| %>
+                <% judgement = cve.latest_judgement %>
+                <% assessment = judgement&.selected_assessment %>
+                <tr class="align-top">
+                  <td class="whitespace-nowrap px-3 py-2">
+                    <%= link_to cve.identifier, cve_path(cve), class: "font-mono text-sky-700 hover:underline" %>
+                  </td>
+                  <td class="px-3 py-2">
+                    <div><%= cve.product_matches.map(&:product_name).uniq.join(", ") %></div>
+                    <div class="mt-1 flex flex-wrap gap-1">
+                      <%= possible_match_badge if cve.possible_match? %>
+                      <%= mismatch_badge if cve.assessment_mismatch? %>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-2 font-mono text-xs">
+                    <% if assessment %>
+                      <%= assessment_vector(assessment) %>
+                      <div class="text-gray-500"><%= assessment_origin(assessment.source, assessment.version) %></div>
+                    <% else %>
+                      <span class="text-gray-400">なし</span>
+                    <% end %>
+                  </td>
+                  <td class="px-3 py-2">
+                    <%= found_capabilities(judgement&.ai_analysis).join(" / ").presence || tag.span("-", class: "text-gray-400") %>
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-2 text-gray-600"><%= format_time(cve.date_published) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+</div>

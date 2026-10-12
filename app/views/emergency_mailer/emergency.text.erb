@@ -1,0 +1,24 @@
+監視対象製品に関係する CVE が、緊急の条件を満たしました。
+
+<%= @cve.identifier %>
+対象製品: <%= @cve.product_matches.map(&:product_name).uniq.join(", ") %>
+判定: <%= judgement_basis(@judgement) %>
+<% if @analysis&.summary_overview.present? %>
+
+■ 概要
+<%= @analysis.summary_overview %>
+<% end %>
+<% if @analysis&.summary_impact.present? %>
+
+■ 影響
+<%= @analysis.summary_impact %>
+<% end %>
+<% if @analysis&.summary_mitigation.present? %>
+
+■ 対策
+<%= @analysis.summary_mitigation %>
+<% end %>
+
+詳細と最新の判定: <%= cve_url(@cve) %>
+
+※ このメールは CVE ごとに 1 回だけ送られる速報です。その後の判定の変化はサイトで確認してください。
