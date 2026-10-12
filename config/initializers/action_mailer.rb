@@ -1,8 +1,9 @@
 Rails.application.configure do
   config.action_mailer.default_url_options = {
     host: ENV.fetch("APP_HOST", "localhost:3000"),
-    protocol: ENV.fetch("APP_PROTOCOL", "http")
-  }
+    protocol: ENV.fetch("APP_PROTOCOL", "http"),
+    script_name: config.relative_url_root
+  }.compact
 
   if !Rails.env.test? && ENV["SMTP_ADDRESS"].present?
     config.action_mailer.delivery_method = :smtp
