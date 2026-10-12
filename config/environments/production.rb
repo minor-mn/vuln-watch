@@ -6,6 +6,9 @@ Rails.application.configure do
   # Code is not reloaded between requests.
   config.enable_reloading = false
 
+  # Set this when Nginx exposes Rails below a path such as /watch.
+  config.relative_url_root = ENV["RAILS_RELATIVE_URL_ROOT"].presence
+
   # Eager load code on boot for better performance and memory savings (ignored by Rake tasks).
   config.eager_load = true
 
