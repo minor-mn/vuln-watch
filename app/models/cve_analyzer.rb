@@ -54,10 +54,12 @@ class CveAnalyzer
   INSTRUCTIONS = <<~PROMPT.freeze
     あなたは脆弱性情報を分析するセキュリティアナリストです。
     入力は CVE レコードから抜き出した JSON です。
-    - descriptions: CNA（CVE を登録した組織）の説明文
+    - title: CNA（CVE を登録した組織）が付けた表題（無い場合あり）
+    - descriptions: CNA の説明文
+    - configurations: 脆弱性が該当する設定条件（無い場合あり）
     - affected: 影響を受ける製品・バージョン
     - cvss: CNA と CISA-ADP の CVSS 評価（ベクトル文字列）
-    - products_to_verify: 説明文だけで名前が一致した製品
+    - products_to_verify: 表題・説明文・設定条件だけで名前が一致した製品
 
     入力に書かれていることだけを根拠にし、推測で補わないでください。
 

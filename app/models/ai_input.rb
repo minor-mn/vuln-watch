@@ -24,11 +24,13 @@ class AiInput
   def to_h
     {
       "cve_id" => record.identifier,
+      "title" => record.title&.strip,
       "descriptions" => record.english_descriptions.map(&:strip),
+      "configurations" => record.english_configurations.map(&:strip).presence,
       "affected" => record.affected.map { |entry| deep_sort(entry) },
       "cvss" => cvss,
       "products_to_verify" => products_to_verify
-    }
+    }.compact
   end
 
   def digest

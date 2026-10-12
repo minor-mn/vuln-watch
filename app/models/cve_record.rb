@@ -52,7 +52,21 @@ class CveRecord
   end
 
   def english_descriptions
-    Array(cna["descriptions"]).select { |d| d["lang"].to_s.start_with?("en") }.map { |d| d["value"] }
+    english_values(cna["descriptions"])
+  end
+
+  def title
+    cna["title"].presence
+  end
+
+  # Configurations required for the vulnerability to apply (e.g. "IPsec VPN is configured").
+  def english_configurations
+    english_values(cna["configurations"])
+  end
+
+  # Free text compared against product names: title, descriptions and configurations.
+  def english_texts
+    [ title, *english_descriptions, *english_configurations ].compact
   end
 
   # v3.0+ assessments in a container, at most one per version.
@@ -68,6 +82,10 @@ class CveRecord
   end
 
   private
+    def english_values(entries)
+      Array(entries).select { |d| d["lang"].to_s.start_with?("en") }.map { |d| d["value"] }
+    end
+
     def metadata
       json.fetch("cveMetadata")
     end

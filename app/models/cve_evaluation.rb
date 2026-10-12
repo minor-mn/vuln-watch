@@ -1,8 +1,10 @@
-# Everything after a CVE is ingested: AI analysis, judgement and the emergency email.
+# Everything after a CVE is ingested: AI analysis, judgement, the emergency email and the
+# translation of matched texts.
 class CveEvaluation
-  def initialize(analyzer: CveAnalyzer.new, notifier: EmergencyNotifier.new)
+  def initialize(analyzer: CveAnalyzer.new, notifier: EmergencyNotifier.new, translator: MatchedTextTranslator.new)
     @analyzer = analyzer
     @notifier = notifier
+    @translator = translator
   end
 
   # When the AI call fails, the CVE is still judged (with the previous analysis, so that a
@@ -21,6 +23,13 @@ class CveEvaluation
     cve.reload
     CveJudge.new(cve).judge(analysis: analysis || cve.latest_ai_analysis, changed_sources:)
     @notifier.notify(cve)
+
+    # The translation is only for display, so it never holds up judging or notifying.
+    begin
+      @translator.translate(cve)
+    rescue OpenaiClient::Error => e
+      error ||= e
+    end
     raise error if error
   end
 end

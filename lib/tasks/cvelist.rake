@@ -5,7 +5,7 @@ namespace :cvelist do
     results = CvelistSynchronizer.new(logger:).call
     puts "Stored #{results.size} CVE(s)"
 
-    evaluation = CveEvaluation.new(analyzer: CveAnalyzer.new(logger:), notifier: EmergencyNotifier.new(logger:))
+    evaluation = CveEvaluation.new(analyzer: CveAnalyzer.new(logger:), notifier: EmergencyNotifier.new(logger:), translator: MatchedTextTranslator.new(logger:))
     results.each do |result|
       evaluation.call(result.cve, changed_sources: result.changed_sources)
     rescue OpenaiClient::Error => error
@@ -18,7 +18,7 @@ namespace :cves do
   desc "Re-evaluate every stored CVE (OpenAI is called only for CVEs whose AI input changed)"
   task evaluate: :environment do
     logger = Logger.new($stdout)
-    evaluation = CveEvaluation.new(analyzer: CveAnalyzer.new(logger:), notifier: EmergencyNotifier.new(logger:))
+    evaluation = CveEvaluation.new(analyzer: CveAnalyzer.new(logger:), notifier: EmergencyNotifier.new(logger:), translator: MatchedTextTranslator.new(logger:))
     Cve.find_each do |cve|
       evaluation.call(cve)
     rescue OpenaiClient::Error => error
