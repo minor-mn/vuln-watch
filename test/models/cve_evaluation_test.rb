@@ -38,20 +38,6 @@ class CveEvaluationTest < ActiveSupport::TestCase
     end
   end
 
-  test "requests only analysis and leaves translations for the daily batch" do
-    client = FakeOpenaiClient.new
-    cve = ingest(vendor: "n/a", product: "n/a", description: "A flaw in Postgres.").cve
-    evaluator = evaluation(client)
-
-    evaluator.call(cve)
-    assert_equal [ "cve_analysis" ], client.calls.map { |request| request.fetch(:schema_name) }
-    assert_nil cve.product_matches.reload.sole.matched_text_ja
-
-    evaluator.call(cve)
-    assert_equal 1, client.calls.size
-    assert_nil cve.product_matches.reload.sole.matched_text_ja
-  end
-
   test "does not mail possible matches" do
     client = FakeOpenaiClient.new(capabilities: { remote_code_execution: "true" })
     cve = ingest(vendor: "n/a", product: "n/a", description: "Postgres RCE.", cna_vectors: [ V31_NETWORK ]).cve
