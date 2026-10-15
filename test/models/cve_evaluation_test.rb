@@ -14,7 +14,7 @@ class CveEvaluationTest < ActiveSupport::TestCase
   teardown { ENV["MAIL_TO"] = @mail_to }
 
   def evaluation(client)
-    CveEvaluation.new(analyzer: CveAnalyzer.new(client:), translator: MatchedTextTranslator.new(client:))
+    CveEvaluation.new(analyzer: CveAnalyzer.new(client:))
   end
 
   test "mails a matched emergency only once, even after it stops and starts being one" do
@@ -36,6 +36,20 @@ class CveEvaluationTest < ActiveSupport::TestCase
       evaluation(client).call(cve, changed_sources: [ "cna" ])
       assert cve.reload.judged_emergency?
     end
+  end
+
+  test "requests only analysis and leaves translations for the daily batch" do
+    client = FakeOpenaiClient.new
+    cve = ingest(vendor: "acme", product: "widget", description: "A flaw in Postgres.").cve
+    evaluator = evaluation(client)
+
+    evaluator.call(cve)
+    assert_equal [ "cve_analysis" ], client.calls.map { |request| request.fetch(:schema_name) }
+    assert_nil cve.product_matches.reload.sole.matched_text_ja
+
+    evaluator.call(cve)
+    assert_equal 1, client.calls.size
+    assert_nil cve.product_matches.reload.sole.matched_text_ja
   end
 
   test "does not mail possible matches" do

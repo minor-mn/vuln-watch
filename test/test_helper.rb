@@ -44,10 +44,9 @@ module ActiveSupport
     class FakeOpenaiClient
       attr_reader :calls, :model
 
-      def initialize(capabilities: {}, product_assessments: [], configured: true, error: nil, translation: "訳")
+      def initialize(capabilities: {}, product_assessments: [], configured: true, error: nil)
         @capabilities = capabilities
         @product_assessments = product_assessments
-        @translation = translation
         @configured = configured
         @error = error
         @model = "test-model"
@@ -59,11 +58,6 @@ module ActiveSupport
       def structured_output(**request)
         @calls << request
         raise @error if @error
-
-        if request[:schema_name] == "matched_text_translation"
-          output = { "translations" => ::JSON.parse(request[:input]).map { |item| { "id" => item["id"], "japanese" => @translation } } }
-          return OpenaiClient::Response.new(output:, raw: { "id" => "resp_test", "output" => [] })
-        end
 
         output = {
           "capabilities" => AiAnalysis::CAPABILITIES.to_h { |c| [ c.to_s, @capabilities.fetch(c, "false") ] },

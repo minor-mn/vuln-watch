@@ -18,6 +18,19 @@ class CveIngestorTest < ActiveSupport::TestCase
     assert_equal [ "N" ], cve.current_assessments_by_source["cna"].map(&:privileges_required)
   end
 
+  test "preserves translations until the matched text changes" do
+    options = { vendor: "acme", product: "widget", description: "A flaw in Postgres." }
+    cve = ingest(**options).cve
+    cve.product_matches.sole.update!(matched_text_ja: "既存の和訳")
+
+    ingest(**options, updated: "2026-10-02T00:00:00Z")
+    assert_equal "既存の和訳", cve.product_matches.reload.sole.matched_text_ja
+
+    ingest(**options.merge(description: "Another flaw in Postgres."), updated: "2026-10-03T00:00:00Z")
+    assert_equal "Another flaw in Postgres.", cve.product_matches.reload.sole.matched_text
+    assert_nil cve.product_matches.sole.matched_text_ja
+  end
+
   test "skips CVEs that match nothing" do
     assert_nil @ingestor.ingest(cve_record(vendor: "acme", product: "widget"))
     assert_equal 0, Cve.count

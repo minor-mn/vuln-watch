@@ -5,9 +5,9 @@ class CvesControllerTest < ActionDispatch::IntegrationTest
 
   setup do
     @cve = ingest(cna_vectors: [ V31_NETWORK ]).cve
-    client = FakeOpenaiClient.new(capabilities: { remote_code_execution: "true" }, translation: "訳文")
-    CveEvaluation.new(analyzer: CveAnalyzer.new(client:), notifier: EmergencyNotifier.new(logger: Logger.new(nil)),
-      translator: MatchedTextTranslator.new(client:)).call(@cve)
+    client = FakeOpenaiClient.new(capabilities: { remote_code_execution: "true" })
+    CveEvaluation.new(analyzer: CveAnalyzer.new(client:), notifier: EmergencyNotifier.new(logger: Logger.new(nil))).call(@cve)
+    @cve.product_matches.sole.update!(matched_text_ja: "訳文")
     @possible = ingest(id: "CVE-2026-0002", vendor: "acme", product: "widget", description: "Uses Postgres.").cve
   end
 
@@ -20,7 +20,7 @@ class CvesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#unknown", text: /説明文のみで一致/
   end
 
-  test "shows the judgement, summary and history" do
+  test "shows the judgement, summary, history and stored translation" do
     get cve_path(@cve)
 
     assert_response :success
