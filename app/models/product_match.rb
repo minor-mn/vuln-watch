@@ -6,7 +6,4 @@ class ProductMatch < ApplicationRecord
     prefix: :by, validate: true
 
   validates :product_name, :matched_term, :matched_text, presence: true
-
-  # A translation of an earlier matched_text is dropped so that it is translated again.
-  before_save { self.matched_text_ja = nil if matched_text_changed? && !matched_text_ja_changed? }
 end
