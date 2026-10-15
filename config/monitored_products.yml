@@ -17,8 +17,12 @@ products:
   - name: PostgreSQL
     vendors:
       - postgresql
+      - postgresql global development group
+      - the postgresql global development group
+      - postgresql.org
     aliases:
       - postgres
+      - postgresql server
 
   - name: OpenSearch
     vendors:

@@ -4,21 +4,14 @@
 class AiInput
   SOURCE_LABELS = { "cna" => "CNA", "cisa_adp" => "CISA-ADP" }.freeze
 
-  attr_reader :record, :products_to_verify
+  attr_reader :record
 
   def self.for(cve)
-    new(CveRecord.new(cve.latest_snapshot.raw_json), products_to_verify: products_to_verify(cve))
+    new(CveRecord.new(cve.latest_snapshot.raw_json))
   end
 
-  # Products matched only by description; the AI is asked whether they are really affected.
-  def self.products_to_verify(cve)
-    matches = cve.product_matches.to_a
-    matches.select(&:by_description?).map(&:product_name) - matches.reject(&:by_description?).map(&:product_name)
-  end
-
-  def initialize(record, products_to_verify: [])
+  def initialize(record)
     @record = record
-    @products_to_verify = products_to_verify.uniq.sort
   end
 
   def to_h
@@ -28,8 +21,7 @@ class AiInput
       "descriptions" => record.english_descriptions.map(&:strip),
       "configurations" => record.english_configurations.map(&:strip).presence,
       "affected" => record.affected.map { |entry| deep_sort(entry) },
-      "cvss" => cvss,
-      "products_to_verify" => products_to_verify
+      "cvss" => cvss
     }.compact
   end
 

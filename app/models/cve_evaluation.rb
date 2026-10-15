@@ -9,6 +9,8 @@ class CveEvaluation
   # temporary failure does not flip the judgement) and the error is raised afterwards so that
   # the caller can retry.
   def call(cve, changed_sources: [])
+    return unless cve.reload.product_matches.exists?
+
     error = nil
     analysis =
       begin

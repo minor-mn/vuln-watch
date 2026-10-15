@@ -44,9 +44,8 @@ module ActiveSupport
     class FakeOpenaiClient
       attr_reader :calls, :model
 
-      def initialize(capabilities: {}, product_assessments: [], configured: true, error: nil)
+      def initialize(capabilities: {}, configured: true, error: nil)
         @capabilities = capabilities
-        @product_assessments = product_assessments
         @configured = configured
         @error = error
         @model = "test-model"
@@ -62,8 +61,7 @@ module ActiveSupport
         output = {
           "capabilities" => AiAnalysis::CAPABILITIES.to_h { |c| [ c.to_s, @capabilities.fetch(c, "false") ] },
           "evidence" => [ { "capability" => "remote_code_execution", "source" => "CNA の説明文", "quote" => "A vulnerability." } ],
-          "summary" => { "overview" => "概要", "impact" => "影響", "affected" => "対象", "mitigation" => "対策" },
-          "product_assessments" => @product_assessments
+          "summary" => { "overview" => "概要", "impact" => "影響", "affected" => "対象", "mitigation" => "対策" }
         }
         OpenaiClient::Response.new(output:, raw: { "id" => "resp_test", "output" => [] })
       end

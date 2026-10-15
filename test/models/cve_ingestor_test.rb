@@ -19,7 +19,7 @@ class CveIngestorTest < ActiveSupport::TestCase
   end
 
   test "preserves translations until the matched text changes" do
-    options = { vendor: "acme", product: "widget", description: "A flaw in Postgres." }
+    options = { vendor: "n/a", product: "n/a", description: "A flaw in Postgres." }
     cve = ingest(**options).cve
     cve.product_matches.sole.update!(matched_text_ja: "既存の和訳")
 
@@ -37,7 +37,7 @@ class CveIngestorTest < ActiveSupport::TestCase
   end
 
   test "description-only matches are possible matches" do
-    result = @ingestor.ingest(cve_record(vendor: "acme", product: "widget", description: "Works with Postgres."))
+    result = @ingestor.ingest(cve_record(vendor: "n/a", product: "n/a", description: "Works with Postgres."))
 
     assert result.cve.possible_match?
   end

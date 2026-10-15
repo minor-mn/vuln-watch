@@ -8,7 +8,7 @@ class CvesControllerTest < ActionDispatch::IntegrationTest
     client = FakeOpenaiClient.new(capabilities: { remote_code_execution: "true" })
     CveEvaluation.new(analyzer: CveAnalyzer.new(client:), notifier: EmergencyNotifier.new(logger: Logger.new(nil))).call(@cve)
     @cve.product_matches.sole.update!(matched_text_ja: "訳文")
-    @possible = ingest(id: "CVE-2026-0002", vendor: "acme", product: "widget", description: "Uses Postgres.").cve
+    @possible = ingest(id: "CVE-2026-0002", vendor: "n/a", product: "n/a", description: "Uses Postgres.").cve
   end
 
   test "lists CVEs in the three sections" do
@@ -36,5 +36,32 @@ class CvesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_match "まだ判定していません", response.body
+  end
+
+  test "CVEs without matching products leave the list but retain their original record" do
+    @possible.product_matches.delete_all
+    @possible.refresh_match_status!
+
+    get root_path
+    assert_response :success
+    assert_select "a", text: @possible.identifier, count: 0
+
+    get cve_path(@possible)
+    assert_response :success
+    assert_match "現在一致する監視対象製品はありません", response.body
+    assert_equal "Uses Postgres.", @possible.latest_snapshot.raw_json.dig("containers", "cna", "descriptions", 0, "value")
+  end
+
+  test "removing an incorrect PostgreSQL match leaves the Rails match in the list" do
+    @cve.product_matches.create!(product_name: "PostgreSQL", rule: "description", matched_term: "postgres", matched_text: "Postgres")
+    matcher = ProductMatcher.new(sample_products)
+    CveIngestor.new(matcher: matcher).ingest(CveRecord.new(@cve.latest_snapshot.raw_json))
+
+    get root_path
+    assert_response :success
+    assert_select "tr", text: /#{@cve.identifier}/ do
+      assert_select "td", text: /Ruby on Rails/
+      assert_select "td", text: /PostgreSQL/, count: 0
+    end
   end
 end

@@ -7,6 +7,8 @@ class Cve < ApplicationRecord
   has_one :notification, dependent: :destroy
 
   enum :match_status, { matched: "matched", possible_match: "possible_match" }, validate: true
+  scope :tracked, -> { where(id: ProductMatch.select(:cve_id)) }
+
   enum :current_judgement,
     { emergency: "emergency", non_emergency: "non_emergency", unknown: "unknown" },
     prefix: :judged, validate: true
@@ -39,10 +41,9 @@ class Cve < ApplicationRecord
     ai_analyses.order(:analyzed_at, :id).last
   end
 
-  # matched once any product matched by affected vendor/product/alias, or the AI confirmed a
-  # description-only match; otherwise possible_match.
+  # Only affected-product identities confirm a match; description-only candidates stay possible.
   def refresh_match_status!
-    confirmed = product_matches.reload.any? { |match| !match.by_description? || match.ai_affects_yes? }
+    confirmed = product_matches.reload.any? { |match| !match.by_description? }
     update!(match_status: confirmed ? "matched" : "possible_match")
   end
 
