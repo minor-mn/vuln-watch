@@ -34,23 +34,19 @@ class CveAnalyzerTest < ActiveSupport::TestCase
     assert_empty client.calls
   end
 
-  test "promotes a possible match the AI confirms" do
-    client = FakeOpenaiClient.new(product_assessments: [ { "product_name" => "PostgreSQL", "affected" => "true" } ])
-    cve = ingest(vendor: "acme", product: "widget", description: "A flaw in Postgres.").cve
+  test "does not request product assessments or promote description-only candidates" do
+    client = FakeOpenaiClient.new(capabilities: { remote_code_execution: "true" })
+    cve = ingest(vendor: "n/a", product: "n/a", description: "A flaw in Postgres.").cve
+    cve.product_matches.sole.update!(ai_affects_product: "true")
 
     CveAnalyzer.new(client:).analyze(cve)
+    cve.refresh_match_status!
 
-    assert cve.reload.matched?
-    assert cve.product_matches.sole.ai_affects_yes?
-  end
-
-  test "keeps a possible match the AI rejects" do
-    client = FakeOpenaiClient.new(product_assessments: [ { "product_name" => "PostgreSQL", "affected" => "false" } ])
-    cve = ingest(vendor: "acme", product: "widget", description: "Widget talks to Postgres.").cve
-
-    CveAnalyzer.new(client:).analyze(cve)
-
-    assert cve.reload.possible_match?
-    assert cve.product_matches.sole.ai_affects_no?
+    assert cve.possible_match?
+    request = client.calls.sole
+    refute_includes request.fetch(:schema).fetch(:required), "product_assessments"
+    refute request.fetch(:schema).fetch(:properties).key?(:product_assessments)
+    refute_includes request.fetch(:instructions), "product_assessments"
+    refute JSON.parse(request.fetch(:input)).key?("products_to_verify")
   end
 end

@@ -14,7 +14,7 @@ class CveEvaluationTest < ActiveSupport::TestCase
   teardown { ENV["MAIL_TO"] = @mail_to }
 
   def evaluation(client)
-    CveEvaluation.new(analyzer: CveAnalyzer.new(client:), translator: MatchedTextTranslator.new(client:))
+    CveEvaluation.new(analyzer: CveAnalyzer.new(client:))
   end
 
   test "mails a matched emergency only once, even after it stops and starts being one" do
@@ -38,14 +38,41 @@ class CveEvaluationTest < ActiveSupport::TestCase
     end
   end
 
+  test "requests only analysis and leaves translations for the daily batch" do
+    client = FakeOpenaiClient.new
+    cve = ingest(vendor: "n/a", product: "n/a", description: "A flaw in Postgres.").cve
+    evaluator = evaluation(client)
+
+    evaluator.call(cve)
+    assert_equal [ "cve_analysis" ], client.calls.map { |request| request.fetch(:schema_name) }
+    assert_nil cve.product_matches.reload.sole.matched_text_ja
+
+    evaluator.call(cve)
+    assert_equal 1, client.calls.size
+    assert_nil cve.product_matches.reload.sole.matched_text_ja
+  end
+
   test "does not mail possible matches" do
-    client = FakeOpenaiClient.new(capabilities: { remote_code_execution: "true" },
-      product_assessments: [ { "product_name" => "PostgreSQL", "affected" => "unknown" } ])
-    cve = ingest(vendor: "acme", product: "widget", description: "Postgres RCE.", cna_vectors: [ V31_NETWORK ]).cve
+    client = FakeOpenaiClient.new(capabilities: { remote_code_execution: "true" })
+    cve = ingest(vendor: "n/a", product: "n/a", description: "Postgres RCE.", cna_vectors: [ V31_NETWORK ]).cve
 
     assert_no_emails { evaluation(client).call(cve) }
     assert cve.reload.judged_emergency?
     assert_nil cve.notification
+  end
+
+  test "CVEs without matching products do not request analysis change judgement or send mail" do
+    cve = ingest(vendor: "n/a", product: "n/a", description: "SQL injection using Postgres.").cve
+    cve.latest_snapshot.update!(raw_json: cve_json(vendor: "acme", product: "widget", description: "SQL injection using Postgres."))
+    matcher = ProductMatcher.new(sample_products)
+    CveIngestor.new(matcher: matcher).ingest(CveRecord.new(cve.latest_snapshot.raw_json))
+    client = FakeOpenaiClient.new(error: OpenaiClient::Error.new("Must not call the API"))
+
+    assert_no_difference [ "AiAnalysis.count", "Judgement.count", "Notification.count" ] do
+      assert_no_emails { evaluation(client).call(cve) }
+    end
+    assert_empty client.calls
+    assert_empty cve.reload.product_matches
   end
 
   test "still judges with the previous analysis when OpenAI fails, then raises" do

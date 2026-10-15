@@ -4,7 +4,7 @@ class CvesController < ApplicationController
 
   def index
     @sections = SECTIONS.index_with do |result|
-      scope = Cve.where(current_judgement: result)
+      scope = Cve.tracked.where(current_judgement: result)
       total = scope.count
       total_pages = [ (total.to_f / PAGE_SIZE).ceil, 1 ].max
       page = params["#{result}_page"].to_s.to_i.clamp(1, total_pages)

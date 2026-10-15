@@ -19,6 +19,7 @@ class CveIngestor
 
     Cve.transaction do
       cve ||= Cve.new(identifier: record.identifier)
+      cve.lock! if cve.persisted?
       cve.assign_attributes(
         state: record.state,
         date_published: record.date_published,
@@ -45,13 +46,16 @@ class CveIngestor
       @published_after.present? && record.date_published.present? && record.date_published < @published_after
     end
 
-    # Matches are added or refreshed, never removed (products may leave the config
-    # or a CVE may later match by a different rule).
+    # Keep matching products; remove stale product matches without deleting the CVE.
     def store_matches(cve, matches)
+      matched_ids = []
       matches.each do |match|
         product_match = cve.product_matches.find_or_initialize_by(product_name: match.product_name, rule: match.rule)
         product_match.update!(matched_term: match.matched_term, matched_text: match.matched_text)
+        matched_ids << product_match.id
       end
+
+      cve.product_matches.where(product_name: @matcher.product_names).where.not(id: matched_ids).delete_all
     end
 
     def store_snapshot(cve, record)

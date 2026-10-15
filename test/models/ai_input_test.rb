@@ -28,9 +28,9 @@ class AiInputTest < ActiveSupport::TestCase
     assert_equal digest(cve_json), digest(json)
   end
 
-  test "includes products matched only by description" do
-    cve = ingest(vendor: "acme", product: "widget", description: "Uses Postgres.").cve
+  test "does not send monitored product candidates for impact confirmation" do
+    cve = ingest(vendor: "n/a", product: "n/a", description: "Uses Postgres.").cve
 
-    assert_equal [ "PostgreSQL" ], AiInput.for(cve).to_h["products_to_verify"]
+    refute AiInput.for(cve).to_h.key?("products_to_verify")
   end
 end
