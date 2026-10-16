@@ -28,7 +28,7 @@ gem "solid_cache"
 gem "solid_queue"
 
 # json 3.x drops the quirks_mode option that ActiveSupport 8.0 still passes
-gem "json", "~> 2.10"
+gem "json", "~> 3.1"
 
 # Load settings (OpenAI, SMTP, ...) from .env in every environment
 gem "dotenv"
