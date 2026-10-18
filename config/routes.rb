@@ -10,6 +10,7 @@ Rails.application.routes.draw do
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
   resources :cves, only: %i[index show]
+  resources :full_disclosures, only: :show
 
   namespace :api do
     resource :briefing, only: :show

@@ -18,8 +18,35 @@ class CveIngestorTest < ActiveSupport::TestCase
     assert_equal [ "N" ], cve.current_assessments_by_source["cna"].map(&:privileges_required)
   end
 
-  test "skips CVEs that match nothing" do
-    assert_nil @ingestor.ingest(cve_record(vendor: "acme", product: "widget"))
+  test "stores qualifying CVEs even when no monitored product matches" do
+    cve = @ingestor.ingest(cve_record(vendor: "acme", product: "widget")).cve
+    assert cve.unmatched?
+    assert_empty cve.product_matches
+    assert cve.analysis_eligible?
+    assert_equal 1, Cve.count
+  end
+
+  test "monitored products do not bypass the attack conditions or missing CVSS" do
+    [ [], [ V31_LOW_PRIV ], [ V31_NETWORK.sub("AV:N", "AV:L") ], [ V31_NETWORK.sub("UI:N", "UI:R") ] ].each do |vectors|
+      assert_nil @ingestor.ingest(cve_record(cna_vectors: vectors))
+    end
+    assert_equal 0, Cve.count
+    assert @ingestor.ingest(cve_record(cna_vectors: [ V31_NETWORK ]))
+  end
+
+  test "import uses the adopted source and version priority" do
+    assert_nil @ingestor.ingest(cve_record(cna_vectors: [ V31_LOW_PRIV ], cisa_updated: "2026-10-02T00:00:00Z", cisa_vectors: [ V31_NETWORK ]))
+    v40 = "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:P/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N"
+    assert_nil @ingestor.ingest(cve_record(cna_vectors: [ V31_NETWORK, v40 ]))
+    cve = @ingestor.ingest(cve_record(vendor: "acme", product: "widget", cna_vectors: [],
+      cisa_updated: "2026-10-02T00:00:00Z", cisa_vectors: [ V31_NETWORK ])).cve
+    assert_equal "cisa_adp", cve.selected_assessment.source
+  end
+
+  test "new rejected records are not imported" do
+    json = cve_json
+    json["cveMetadata"]["state"] = "REJECTED"
+    assert_nil @ingestor.ingest(CveRecord.new(json))
     assert_equal 0, Cve.count
   end
 
@@ -67,8 +94,9 @@ class CveIngestorTest < ActiveSupport::TestCase
 
     result = ingestor.ingest(cve_record(updated: "2026-10-02T00:00:00Z", cna_updated: "2026-10-02T00:00:00Z", cna_vectors: [ V31_NETWORK ]))
 
-    assert result.cve.matched?
-    assert_equal 1, result.cve.product_matches.count
+    assert result.cve.unmatched?
+    assert_empty result.cve.product_matches
     assert_equal [ "cna" ], result.changed_sources
+    assert_equal 2, result.cve.cve_snapshots.count
   end
 end

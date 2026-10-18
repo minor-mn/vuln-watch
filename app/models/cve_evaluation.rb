@@ -9,12 +9,12 @@ class CveEvaluation
   # temporary failure does not flip the judgement) and the error is raised afterwards so that
   # the caller can retry.
   def call(cve, changed_sources: [])
-    return unless cve.reload.product_matches.exists?
+    return unless cve.reload.state == "PUBLISHED"
 
     error = nil
     analysis =
       begin
-        @analyzer.analyze(cve)
+        @analyzer.analyze(cve) if cve.analysis_eligible?
       rescue OpenaiClient::Error => e
         error = e
         nil

@@ -1,26 +1,17 @@
 <% content_for :title, "Vuln Watch" %>
 
-<%= form_with url: root_path, method: :get, class: "mb-6 rounded border border-gray-200 bg-white p-4" do %>
-  <p class="mb-2 text-sm font-semibold">表示する取得元</p>
-  <%= hidden_field_tag "sources[]", "" %>
-  <% InformationSources.enabled.each do |source| %>
-    <label class="mr-4 inline-flex items-center gap-1 text-sm">
-      <%= check_box_tag "sources[]", source, @selected_sources.include?(source) %>
-      <%= InformationSources::LABELS.fetch(source) %>
-    </label>
-  <% end %>
-  <%= submit_tag "表示", class: "rounded bg-sky-700 px-3 py-1 text-sm text-white" %>
-  <p class="mt-2 text-xs text-gray-500">選択した取得元の情報を表示します。情報は60分ごとに更新します。</p>
-<% end %>
-
 <div class="space-y-8">
+  <% if @selected_sources.include?("cve") %>
+  <section id="cve">
+    <h2 class="mb-2 text-base font-semibold">CVE <span class="text-sm font-normal text-gray-500"><%= @sections.values.sum { |section| section.fetch(:total) } %> 件</span></h2>
+    <div class="space-y-8">
   <% @sections.each do |result, section| %>
     <% cves = section.fetch(:cves) %>
     <section id="<%= result %>">
-      <h2 class="mb-2 flex items-center gap-2 text-base font-semibold">
+      <h3 class="mb-2 flex items-center gap-2 text-base font-semibold">
         <%= judgement_badge(result) %>
-        <span class="text-sm font-normal text-gray-500"><%= section.fetch(:total) + @information_sections.fetch(result, []).size %> 件</span>
-      </h2>
+        <span class="text-sm font-normal text-gray-500"><%= section.fetch(:total) %> 件</span>
+      </h3>
 
       <% if cves.empty? %>
         <p class="rounded border border-dashed border-gray-300 bg-white px-4 py-3 text-sm text-gray-500">該当する CVE はありません。</p>
@@ -45,7 +36,7 @@
                     <%= link_to cve.identifier, cve_path(cve), class: "font-mono text-sky-700 hover:underline" %>
                   </td>
                   <td class="px-3 py-2">
-                    <div><%= cve.product_matches.map(&:product_name).uniq.join(", ") %></div>
+                    <div><%= @products_by_cve.fetch(cve.id, []).join(", ").presence || "記載なし" %></div>
                     <div class="mt-1 flex flex-wrap gap-1">
                       <%= possible_match_badge if cve.possible_match? %>
                       <%= mismatch_badge if cve.assessment_mismatch? %>
@@ -77,23 +68,29 @@
             </span>
             <nav class="flex items-center gap-3" aria-label="<%= judgement_label(result) %>のページ">
               <% if section.fetch(:page) > 1 %>
-                <%= link_to "前へ", root_path(request.query_parameters.merge("#{result}_page" => section.fetch(:page) - 1, anchor: result)), class: "text-sky-700 hover:underline" %>
+                <%= link_to "前へ", listing_page_path("#{result}_page", section.fetch(:page) - 1, anchor: result), class: "text-sky-700 hover:underline" %>
               <% end %>
               <% if section.fetch(:page) < section.fetch(:total_pages) %>
-                <%= link_to "次へ", root_path(request.query_parameters.merge("#{result}_page" => section.fetch(:page) + 1, anchor: result)), class: "text-sky-700 hover:underline" %>
+                <%= link_to "次へ", listing_page_path("#{result}_page", section.fetch(:page) + 1, anchor: result), class: "text-sky-700 hover:underline" %>
               <% end %>
             </nav>
           </div>
         <% end %>
       <% end %>
-      <%= render "information_items", items: @information_sections.fetch(result, []) %>
     </section>
   <% end %>
-  <section id="topics">
-    <h2 class="mb-2 text-base font-semibold">話題 <span class="text-sm font-normal text-gray-500"><%= @information_sections.fetch("topics", []).size %> 件</span></h2>
-    <%= render "information_items", items: @information_sections.fetch("topics", []) %>
-    <% if @information_sections.fetch("topics", []).empty? %>
-      <p class="text-sm text-gray-500">該当する話題はありません。</p>
+    </div>
+  </section>
+  <% end %>
+  <% @information_sections.each do |source, section| %>
+  <section id="<%= source %>">
+    <h2 class="mb-2 text-base font-semibold"><%= information_source_label(source) %> <span class="text-sm font-normal text-gray-500"><%= section.fetch(:total) %> 件</span></h2>
+    <%= render "information_items", items: section.fetch(:items), related_cves: @related_cves, full_disclosure_assessments: @full_disclosure_assessments %>
+    <% if section.fetch(:items).empty? %>
+      <p class="rounded border border-dashed border-gray-300 bg-white px-4 py-3 text-sm text-gray-500">該当する情報はありません。</p>
+    <% else %>
+      <%= render "information_pagination", source:, section: %>
     <% end %>
   </section>
+  <% end %>
 </div>

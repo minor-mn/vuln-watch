@@ -1,7 +1,7 @@
 class InformationSources
   LABELS = {
-    "cve" => "CVE", "github_advisory" => "GitHub Advisory Database",
-    "full_disclosure" => "Full Disclosure", "slashdot" => "Slashdot"
+    "cve" => "CVE", "full_disclosure" => "Full Disclosure",
+    "github_advisory" => "GitHub Advisory Database", "slashdot" => "Slashdot"
   }.freeze
 
   def self.enabled

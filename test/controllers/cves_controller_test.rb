@@ -16,7 +16,7 @@ class CvesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "#emergency a", text: @cve.identifier
     assert_select "#unknown a", text: @possible.identifier
-    assert_select "#unknown", text: /説明文のみで一致/
+    assert_select "#unknown", text: /メール対象候補（説明文のみ）/
   end
 
   test "shows the judgement, summary and history" do
@@ -36,17 +36,17 @@ class CvesControllerTest < ActionDispatch::IntegrationTest
     assert_match "まだ判定していません", response.body
   end
 
-  test "CVEs without matching products leave the list but retain their original record" do
+  test "CVEs without matching products stay listed and retain their original record" do
     @possible.product_matches.delete_all
     @possible.refresh_match_status!
 
     get root_path
     assert_response :success
-    assert_select "a", text: @possible.identifier, count: 0
+    assert_select "#unknown a", text: @possible.identifier
 
     get cve_path(@possible)
     assert_response :success
-    assert_match "現在一致する監視対象製品はありません", response.body
+    assert_select "h2", text: "メール通知対象製品との一致", count: 0
     assert_equal "Uses Postgres.", @possible.latest_snapshot.raw_json.dig("containers", "cna", "descriptions", 0, "value")
   end
 
@@ -58,8 +58,28 @@ class CvesControllerTest < ActionDispatch::IntegrationTest
     get root_path
     assert_response :success
     assert_select "tr", text: /#{@cve.identifier}/ do
-      assert_select "td", text: /Ruby on Rails/
+      assert_select "td", text: /rails/
       assert_select "td", text: /PostgreSQL/, count: 0
     end
+  end
+  test "unmatched CVEs appear with original affected products and in the briefing API" do
+    cve = ingest(id: "CVE-2026-8123", vendor: "acme", product: "Widget Server").cve
+    client = FakeOpenaiClient.new
+    CveEvaluation.new(analyzer: CveAnalyzer.new(client:)).call(cve)
+    get root_path
+    assert_response :success
+    assert_select "#non_emergency tr", text: /#{cve.identifier}/ do
+      assert_select "td", text: /Widget Server/
+    end
+    get "/api/briefing", params: { sources: "cve", hours: 1000 }
+    row = response.parsed_body.dig("news", "items").find { |item| item.dig("advisory", "cve_id") == cve.identifier }
+    assert row
+    assert_includes row.dig("source", "title"), "Widget Server"
+    assert_includes row["article_summary"], "概要"
+    cve.update!(state: "REJECTED")
+    get root_path
+    assert_select "a", text: cve.identifier, count: 0
+    get "/api/briefing", params: { sources: "cve", hours: 1000 }
+    refute response.parsed_body.dig("news", "items").any? { |item| item.dig("advisory", "cve_id") == cve.identifier }
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_18_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_19_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -93,6 +93,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_000001) do
     t.index ["source_revision_id"], name: "index_cvss_assessments_on_source_revision_id"
   end
 
+  create_table "full_disclosure_analyses", force: :cascade do |t|
+    t.bigint "information_item_id", null: false
+    t.string "input_hash", null: false
+    t.text "title", null: false
+    t.text "original_body", null: false
+    t.text "body_ja", null: false
+    t.jsonb "assessments", default: [], null: false
+    t.string "model", null: false
+    t.string "prompt_version", null: false
+    t.datetime "analyzed_at", null: false
+    t.jsonb "raw_response", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["information_item_id", "input_hash"], name: "index_fd_analyses_on_item_and_input", unique: true
+    t.index ["information_item_id"], name: "index_full_disclosure_analyses_on_information_item_id"
+  end
+
   create_table "information_items", force: :cascade do |t|
     t.string "source", null: false
     t.string "url", null: false
@@ -108,6 +125,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_000001) do
     t.jsonb "thread", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "full_body"
+    t.datetime "full_body_fetched_at"
     t.index ["source", "listed", "published_at"], name: "index_information_items_on_source_and_listed_and_published_at"
     t.index ["source", "url"], name: "index_information_items_on_source_and_url", unique: true
   end
@@ -179,6 +198,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_18_000001) do
   add_foreign_key "cve_snapshots", "cvelist_syncs"
   add_foreign_key "cve_snapshots", "cves"
   add_foreign_key "cvss_assessments", "source_revisions"
+  add_foreign_key "full_disclosure_analyses", "information_items"
   add_foreign_key "judgements", "ai_analyses"
   add_foreign_key "judgements", "cves"
   add_foreign_key "judgements", "cvss_assessments", column: "selected_assessment_id"

@@ -55,9 +55,9 @@
           <dt class="font-medium text-gray-700">出典</dt>
           <dd class="mt-1">
             <ul class="list-disc space-y-1 pl-5">
-              <li><%= link_to "CVE.org: #{@cve.identifier}", "https://www.cve.org/CVERecord?id=#{@cve.identifier}", class: "text-sky-700 hover:underline", rel: "noopener noreferrer" %></li>
+              <li><%= link_to "CVE.org: #{@cve.identifier}", "https://www.cve.org/CVERecord?id=#{@cve.identifier}", class: "text-sky-700 hover:underline", target: "_blank", rel: "noopener noreferrer" %></li>
               <% @record&.references&.each do |reference| %>
-                <li class="break-all"><%= link_to reference["name"].presence || reference["url"], reference["url"], class: "text-sky-700 hover:underline", rel: "noopener noreferrer" %></li>
+                <li class="break-all"><%= link_to reference["name"].presence || reference["url"], reference["url"], class: "text-sky-700 hover:underline", target: "_blank", rel: "noopener noreferrer" %></li>
               <% end %>
             </ul>
           </dd>
@@ -120,26 +120,6 @@
       <% end %>
     </section>
   <% end %>
-
-  <section class="rounded border border-gray-200 bg-white p-4">
-    <h2 class="mb-3 font-semibold">一致した監視対象製品</h2>
-    <% if @cve.product_matches.empty? %>
-      <p class="text-sm text-gray-500">現在一致する監視対象製品はありません。</p>
-    <% end %>
-    <ul class="space-y-3 text-sm">
-      <% @cve.product_matches.each do |match| %>
-        <li>
-          <div>
-            <span class="font-medium"><%= match.product_name %></span>
-            <span class="text-gray-600">— <%= CvesHelper::RULE_LABELS[match.rule] %>で一致</span>
-          </div>
-          <div class="mt-1 border-l-2 border-gray-200 pl-3">
-            <p class="text-gray-800"><%= match.matched_text %></p>
-          </div>
-        </li>
-      <% end %>
-    </ul>
-  </section>
 
   <section class="rounded border border-gray-200 bg-white p-4">
     <h2 class="mb-3 font-semibold">変更履歴</h2>

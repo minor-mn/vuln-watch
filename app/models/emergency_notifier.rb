@@ -7,7 +7,7 @@ class EmergencyNotifier
   end
 
   def notify(cve)
-    return unless cve.matched? && cve.judged_emergency?
+    return unless cve.state == "PUBLISHED" && cve.matched? && cve.product_matches.exists? && cve.judged_emergency?
     return if cve.notification&.sent_at
 
     if EmergencyMailer.recipients.empty?

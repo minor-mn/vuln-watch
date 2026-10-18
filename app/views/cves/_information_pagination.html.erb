@@ -1,0 +1,16 @@
+<div class="mt-3 flex items-center justify-between text-sm text-gray-600">
+  <span>
+    <%= (section.fetch(:page) - 1) * CvesController::INFORMATION_PAGE_SIZE + 1 %>–<%= [ section.fetch(:page) * CvesController::INFORMATION_PAGE_SIZE, section.fetch(:total) ].min %>
+    / <%= section.fetch(:total) %> 件（<%= section.fetch(:page) %> / <%= section.fetch(:total_pages) %> ページ）
+  </span>
+  <% if section.fetch(:total_pages) > 1 %>
+    <nav class="flex items-center gap-3" aria-label="<%= information_source_label(source) %>のページ">
+      <% if section.fetch(:page) > 1 %>
+        <%= link_to "前へ", listing_page_path(section.fetch(:page_key), section.fetch(:page) - 1, anchor: source), rel: "prev", class: "text-sky-700 hover:underline" %>
+      <% end %>
+      <% if section.fetch(:page) < section.fetch(:total_pages) %>
+        <%= link_to "次へ", listing_page_path(section.fetch(:page_key), section.fetch(:page) + 1, anchor: source), rel: "next", class: "text-sky-700 hover:underline" %>
+      <% end %>
+    </nav>
+  <% end %>
+</div>

@@ -119,14 +119,16 @@ class BriefingsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "index ends with topics and keeps Slashdot out of emergency sections" do
+  test "index has source sections and ends with lowercase slashdot" do
     get root_path
     assert_response :success
-    assert_select "section:last-child#topics article a", text: "slashdot title"
+    assert_select "section:last-child#slashdot article a", text: "slashdot title"
+    assert_select "#slashdot h2", text: /\Aslashdot/
     assert_select "#emergency article a", text: "slashdot title", count: 0
-    assert_select "#unknown article a", text: "full_disclosure title"
+    assert_select "#full_disclosure article a", text: "full_disclosure title"
     get root_path, params: { sources: [ "slashdot" ] }
-    assert_select "#topics article", count: 1
+    assert_select "#slashdot article", count: 1
+    assert_select "#full_disclosure", count: 0
     assert_select "#unknown article", count: 0
     assert_select "#unknown td", count: 0
   end

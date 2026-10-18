@@ -43,7 +43,8 @@ class CvelistSynchronizerTest < ActiveSupport::TestCase
     commit_cve(cve_json(id: "CVE-2026-0003", vendor: "acme", product: "widget", published: Time.current.iso8601))
     results = @synchronizer.call
 
-    assert_equal [ "CVE-2026-0002" ], results.map { |r| r.cve.identifier }
+    assert_equal %w[CVE-2026-0002 CVE-2026-0003], results.map { |r| r.cve.identifier }.sort
+    assert results.find { |r| r.cve.identifier == "CVE-2026-0003" }.cve.unmatched?
     assert_equal first_sync.to_commit, CvelistSync.last_succeeded.from_commit
     assert_equal 3, CvelistSync.last_succeeded.changed_files_count
   end
@@ -56,6 +57,21 @@ class CvelistSynchronizerTest < ActiveSupport::TestCase
     missing = Open3.capture2("git", "rev-list", "--objects", "--all", "--missing=print", chdir: @repository.path.to_s)
       .first.lines.grep(/\A\?/)
     assert_not_empty missing
+  end
+
+  test "a rescan fills previously skipped eligible records without moving the watch boundary" do
+    commit_cve(cve_json(id: "CVE-2026-0001", published: 3.months.ago.iso8601), at: 3.months.ago)
+    commit_cve(cve_json(id: "CVE-2026-0009", published: 3.months.ago.iso8601), at: 1.month.ago - 12.hours)
+    commit_cve(cve_json(id: "CVE-2026-0008", vendor: "acme", product: "widget", published: 10.days.ago.iso8601), at: 10.days.ago)
+    @synchronizer.call
+    watch_from = CvelistSync.watch_from
+    skipped = Cve.find_by!(identifier: "CVE-2026-0008")
+    skipped.source_revisions.destroy_all
+    skipped.destroy!
+    assert_empty @synchronizer.call
+    results = @synchronizer.call(rescan: true)
+    assert_equal [ "CVE-2026-0008" ], results.map { |result| result.cve.identifier }
+    assert_equal watch_from, CvelistSync.watch_from
   end
 
   test "records a failed sync" do

@@ -13,7 +13,7 @@ module ActiveSupport
     # Builds a minimal CVE JSON 5.x record.
     def cve_json(id: "CVE-2026-0001", published: "2026-10-01T00:00:00.000Z", updated: published,
                  vendor: "rails", product: "rails", description: "A vulnerability.",
-                 cna_updated: updated, cna_vectors: [], cisa_updated: nil, cisa_vectors: [])
+                 cna_updated: updated, cna_vectors: [ "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H" ], cisa_updated: nil, cisa_vectors: [])
       metric = ->(vector) { { "cvssV#{vector[/CVSS:(\d\.\d)/, 1].tr('.', '_')}" => { "vectorString" => vector } } }
       adp = [ { "providerMetadata" => { "shortName" => "CVE", "dateUpdated" => updated } } ]
       if cisa_updated

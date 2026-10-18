@@ -6,8 +6,8 @@ class Cve < ApplicationRecord
   has_many :judgements, dependent: :destroy
   has_one :notification, dependent: :destroy
 
-  enum :match_status, { matched: "matched", possible_match: "possible_match" }, validate: true
-  scope :tracked, -> { where(id: ProductMatch.select(:cve_id)) }
+  enum :match_status, { matched: "matched", possible_match: "possible_match", unmatched: "unmatched" }, validate: true
+  scope :published, -> { where(state: "PUBLISHED") }
 
   enum :current_judgement,
     { emergency: "emergency", non_emergency: "non_emergency", unknown: "unknown" },
@@ -43,19 +43,22 @@ class Cve < ApplicationRecord
 
   # Only affected-product identities confirm a match; description-only candidates stay possible.
   def refresh_match_status!
-    confirmed = product_matches.reload.any? { |match| !match.by_description? }
-    update!(match_status: confirmed ? "matched" : "possible_match")
+    matches = product_matches.reload
+    status = if matches.empty? then "unmatched"
+    elsif matches.any? { |match| !match.by_description? } then "matched"
+    else "possible_match"
+    end
+    update!(match_status: status)
   end
 
   # The assessment used for condition 1: CNA before CISA, then the newest CVSS version.
   # dateUpdated is deliberately not considered.
   def selected_assessment
-    by_source = current_assessments_by_source
-    %w[cna cisa_adp].each do |source|
-      found = by_source.fetch(source, []).min_by { |assessment| CvssAssessment::VERSIONS.index(assessment.version) }
-      return found if found
-    end
-    nil
+    CvssAssessment.preferred(current_assessments_by_source)
+  end
+
+  def analysis_eligible?
+    state == "PUBLISHED" && selected_assessment&.remotely_exploitable_without_interaction? == true
   end
 
   # The newest revision of each source (cna / cisa_adp).
