@@ -9,6 +9,14 @@ class CvssAssessment < ApplicationRecord
 
   delegate :source, to: :source_revision
 
+  def self.preferred(by_source)
+    %w[cna cisa_adp].each do |source|
+      found = by_source.fetch(source, []).min_by { |assessment| VERSIONS.index(assessment.version) }
+      return found if found
+    end
+    nil
+  end
+
   # Condition 1: reachable over the network, no privileges, no user interaction.
   def remotely_exploitable_without_interaction?
     attack_vector == "N" && privileges_required == "N" && user_interaction == "N"

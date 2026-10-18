@@ -47,28 +47,58 @@ class CveEvaluationTest < ActiveSupport::TestCase
     assert_nil cve.notification
   end
 
-  test "CVEs without matching products do not request analysis change judgement or send mail" do
-    cve = ingest(vendor: "n/a", product: "n/a", description: "SQL injection using Postgres.").cve
-    cve.latest_snapshot.update!(raw_json: cve_json(vendor: "acme", product: "widget", description: "SQL injection using Postgres."))
-    matcher = ProductMatcher.new(sample_products)
-    CveIngestor.new(matcher: matcher).ingest(CveRecord.new(cve.latest_snapshot.raw_json))
-    client = FakeOpenaiClient.new(error: OpenaiClient::Error.new("Must not call the API"))
+  test "unmatched CVEs are analyzed and judged without sending mail" do
+    cve = ingest(vendor: "acme", product: "widget").cve
+    client = FakeOpenaiClient.new(capabilities: { remote_code_execution: "true" })
+    assert_no_emails { evaluation(client).call(cve) }
+    assert cve.reload.judged_emergency?
+    assert cve.unmatched?
+    assert_equal 1, cve.ai_analyses.count
+    assert_nil cve.notification
+    assert_no_emails { evaluation(client).call(cve) }
+    assert_equal 1, client.calls.size
+  end
 
-    assert_no_difference [ "AiAnalysis.count", "Judgement.count", "Notification.count" ] do
+  test "non-emergency and unknown capabilities remain saved for unmatched CVEs" do
+    { "false" => "non_emergency", "unknown" => "unknown" }.each_with_index do |(capability, expected), index|
+      cve = ingest(id: "CVE-2026-999#{index}", vendor: "acme", product: "widget").cve
+      client = FakeOpenaiClient.new(capabilities: { remote_code_execution: capability })
       assert_no_emails { evaluation(client).call(cve) }
+      assert_equal expected, cve.reload.current_judgement
+      assert_equal "概要", cve.latest_ai_analysis.summary_overview
     end
-    assert_empty client.calls
-    assert_empty cve.reload.product_matches
+  end
+
+  test "changed attack conditions update the judgement without another analysis" do
+    cve = ingest(cna_vectors: [ V31_NETWORK ]).cve
+    client = FakeOpenaiClient.new(capabilities: { remote_code_execution: "true" })
+    evaluation(client).call(cve)
+    ingest(updated: "2026-10-02T00:00:00Z", cna_vectors: [ V31_LOW_PRIV ])
+    assert_no_emails { evaluation(client).call(cve) }
+    assert cve.reload.judged_non_emergency?
+    assert_equal 1, client.calls.size
+    assert_equal 1, cve.ai_analyses.count
+  end
+
+  test "missing product matches and rejected states never mail even if marked matched" do
+    cve = ingest(vendor: "acme", product: "widget").cve
+    cve.update!(match_status: "matched", current_judgement: "emergency")
+    assert_no_emails { EmergencyNotifier.new.notify(cve) }
+    assert_nil cve.notification
+    cve.product_matches.create!(product_name: "Ruby on Rails", rule: "vendor_product", matched_term: "rails", matched_text: "rails")
+    cve.update!(state: "REJECTED")
+    assert_no_emails { EmergencyNotifier.new.notify(cve) }
+    assert_nil cve.notification
   end
 
   test "still judges with the previous analysis when OpenAI fails, then raises" do
     cve = ingest(updated: "2026-10-01T00:00:00Z", cna_vectors: [ V31_NETWORK ]).cve
     evaluation(FakeOpenaiClient.new(capabilities: { remote_code_execution: "true" })).call(cve)
 
-    ingest(updated: "2026-10-02T00:00:00Z", cna_updated: "2026-10-02T00:00:00Z", cna_vectors: [ V31_LOW_PRIV ])
+    ingest(updated: "2026-10-02T00:00:00Z", description: "Changed RCE details", cna_vectors: [ V31_NETWORK ])
     failing = FakeOpenaiClient.new(error: OpenaiClient::Error.new("boom"))
 
     assert_raises(OpenaiClient::Error) { evaluation(failing).call(cve, changed_sources: [ "cna" ]) }
-    assert cve.reload.judged_non_emergency?
+    assert cve.reload.judged_emergency?
   end
 end

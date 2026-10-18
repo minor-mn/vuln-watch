@@ -22,7 +22,8 @@ class InformationThreads
       result["partial"] = comments.size > MAX_COMMENTS
       result["comments"] = comments.sort_by { |row| -(row["score"] || -2) }.first(MAX_COMMENTS)
     elsif item.source == "full_disclosure"
-      root = message(@http.get(item.url).body, item.url)
+      root = message(@http.get(item.url).body, item.url, include_quotes: true)
+      result["original_body"] = root.fetch(:text)
       descendants = root.fetch(:parents).keys.select do |candidate|
         current = candidate
         seen = Set.new
@@ -36,7 +37,7 @@ class InformationThreads
       result["partial"] = descendants.size > MAX_COMMENTS
       result["comments"] = descendants.first(MAX_COMMENTS).filter_map do |url|
         reply = message(@http.get(url).body, url)
-        text = reply[:text].lines.reject { |line| line.lstrip.start_with?(">") }.join.split(/\n_{10,}\s*\nSent through the Full Disclosure mailing list/, 2).first.strip
+        text = reply[:text].lines.reject { |line| line.lstrip.start_with?(">") }.join.split(/\n_{10,}\s*\nSent through the Full Disclosure mailing list/, 2).first.to_s.strip
         raise InformationHttp::Error, "Empty reply" if text.empty?
         comment(url, reply[:title], text, url, nil, root[:parents][url])
       rescue InformationHttp::Error
@@ -72,13 +73,17 @@ class InformationThreads
     end
   end
 
-  def message(html, url)
+  def message(html, url, include_quotes: false)
     raise InformationHttp::Error, "Invalid message URL" unless InformationFeeds.message_url?(url)
     body = html[/<!--\s*X-Body-of-Message\s*-->(.*?)<!--\s*X-Body-of-Message-End\s*-->/m, 1]
     raise InformationHttp::Error, "Missing message body" unless body
     fragment = Nokogiri::HTML.fragment(body)
-    fragment.css("script, style, blockquote").remove
+    fragment.css(include_quotes ? "script, style" : "script, style, blockquote").remove
     fragment.css("br").each { |node| node.replace("\n") }
+    fragment.css("p, div, li, h1, h2, h3, h4, pre").each do |node|
+      node.add_previous_sibling(Nokogiri::XML::Text.new("\n", fragment.document))
+      node.add_next_sibling(Nokogiri::XML::Text.new("\n", fragment.document))
+    end
     doc = Nokogiri::HTML(html)
     title = doc.at_css("h1.m-title")&.text.to_s.strip
     parents = {}

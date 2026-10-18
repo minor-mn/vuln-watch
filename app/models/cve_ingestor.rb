@@ -15,7 +15,7 @@ class CveIngestor
   def ingest(record)
     cve = Cve.find_by(identifier: record.identifier)
     matches = @matcher.match(record)
-    return if cve.nil? && skip_new?(record, matches)
+    return if cve.nil? && skip_new?(record)
 
     Cve.transaction do
       cve ||= Cve.new(identifier: record.identifier)
@@ -25,7 +25,7 @@ class CveIngestor
         date_published: record.date_published,
         record_date_updated: record.record_date_updated
       )
-      cve.match_status ||= "possible_match"
+      cve.match_status ||= "unmatched"
       cve.save!
 
       store_matches(cve, matches)
@@ -40,8 +40,8 @@ class CveIngestor
   end
 
   private
-    def skip_new?(record, matches)
-      return true if matches.empty?
+    def skip_new?(record)
+      return true unless record.state == "PUBLISHED" && record.remotely_exploitable_without_interaction?
 
       @published_after.present? && record.date_published.present? && record.date_published < @published_after
     end
@@ -55,7 +55,7 @@ class CveIngestor
         matched_ids << product_match.id
       end
 
-      cve.product_matches.where(product_name: @matcher.product_names).where.not(id: matched_ids).delete_all
+      cve.product_matches.where.not(id: matched_ids).delete_all
     end
 
     def store_snapshot(cve, record)

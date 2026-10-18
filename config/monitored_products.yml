@@ -1,4 +1,5 @@
-# Products to watch. Matching is case-insensitive.
+# Products that trigger emergency emails. CVE import/display uses AV:N / PR:N / UI:N independently.
+# Matching is case-insensitive.
 #
 #   name:    product name (also used for display)
 #   vendors: vendor names as they appear in CVE `affected[].vendor`

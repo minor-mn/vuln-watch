@@ -74,7 +74,7 @@ class CveAnalyzer
   # Returns the AiAnalysis for the CVE's current AI input, or nil when OpenAI is not configured.
   # Raises OpenaiClient::Error when the call fails.
   def analyze(cve)
-    return unless cve.product_matches.exists?
+    return unless cve.analysis_eligible?
 
     input = AiInput.for(cve)
     input_hash = input.digest

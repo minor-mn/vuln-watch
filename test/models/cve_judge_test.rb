@@ -22,6 +22,7 @@ class CveJudgeTest < ActiveSupport::TestCase
   end
 
   test "non_emergency when a privilege is required, even if capabilities are unknown" do
+    ingest(updated: "2026-09-30T00:00:00Z")
     cve = ingest(cna_vectors: [ V31_LOW_PRIV ]).cve
 
     judgement = judge(cve, remote_code_execution: "unknown")
@@ -35,7 +36,8 @@ class CveJudgeTest < ActiveSupport::TestCase
   end
 
   test "unknown when there is no assessment yet, never non_emergency" do
-    judgement = judge(ingest.cve, remote_code_execution: "true")
+    ingest(updated: "2026-09-30T00:00:00Z")
+    judgement = judge(ingest(cna_vectors: []).cve, remote_code_execution: "true")
 
     assert judgement.unknown?
     assert judgement.attack_unknown?
@@ -55,7 +57,7 @@ class CveJudgeTest < ActiveSupport::TestCase
   end
 
   test "falls back to CISA when CNA has no assessment" do
-    cve = ingest(cisa_updated: "2026-10-05T00:00:00Z", cisa_vectors: [ V31_NETWORK ]).cve
+    cve = ingest(cna_vectors: [], cisa_updated: "2026-10-05T00:00:00Z", cisa_vectors: [ V31_NETWORK ]).cve
 
     assert_equal "cisa_adp", judge(cve, remote_code_execution: "true").selected_assessment.source
   end
@@ -77,10 +79,11 @@ class CveJudgeTest < ActiveSupport::TestCase
   end
 
   test "records the CISA dateUpdated when only CISA changed" do
-    cve = ingest(updated: "2026-10-01T09:00:00Z").cve
+    ingest(updated: "2026-09-30T00:00:00Z")
+    cve = ingest(updated: "2026-10-01T09:00:00Z", cna_vectors: []).cve
     judge(cve, remote_code_execution: "true")
 
-    result = ingest(updated: "2026-10-01T12:00:00Z", cna_updated: "2026-10-01T09:00:00Z",
+    result = ingest(updated: "2026-10-01T12:00:00Z", cna_updated: "2026-10-01T09:00:00Z", cna_vectors: [],
       cisa_updated: "2026-10-01T12:00:00Z", cisa_vectors: [ V31_NETWORK ])
     judgement = judge(cve.reload, changed_sources: result.changed_sources, remote_code_execution: "true")
 

@@ -24,7 +24,16 @@ class InformationCollector
     end
     @summarizer.call(items)
     items.reject { |item| item.reply? || item.relevant != true }.each do |item|
-      item.update!(thread: @threads.fetch(item))
+      thread = @threads.fetch(item)
+      original_body = thread.delete("original_body")
+      attributes = { thread: }
+      if item.source == "full_disclosure" && original_body.present?
+        attributes.merge!(full_body: original_body, full_body_fetched_at: Time.current)
+      end
+      item.update!(attributes)
+      if item.source == "full_disclosure" && item.full_body.present? && item.current_full_disclosure_analysis.nil?
+        FullDisclosureAnalysisJob.perform_later(item)
+      end
     end
   end
 end

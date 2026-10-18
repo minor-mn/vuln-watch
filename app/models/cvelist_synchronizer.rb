@@ -2,7 +2,7 @@
 #
 # The first run fetches only the last month of history and ingests CVEs published in that month.
 # Later runs read the CVE files changed since the last successful sync and ingest those that
-# match a monitored product (or are already stored). Older CVEs are never stored.
+# have AV:N / PR:N / UI:N (or are already stored). Older CVEs are never stored.
 class CvelistSynchronizer
   def initialize(repository: Cvelist::Repository.new, matcher: ProductMatcher.new, logger: Rails.logger)
     @repository = repository
@@ -10,8 +10,8 @@ class CvelistSynchronizer
     @logger = logger
   end
 
-  def call
-    from_commit = CvelistSync.last_succeeded&.to_commit
+  def call(rescan: false)
+    from_commit = CvelistSync.last_succeeded&.to_commit unless rescan
     sync = CvelistSync.create!(status: "running", from_commit:, started_at: Time.current)
     watch_from = CvelistSync.watch_from || sync.started_at - CvelistSync::INITIAL_LOOKBACK
 
@@ -56,12 +56,8 @@ class CvelistSynchronizer
 
     def ingest_files(files, watch_from:, sync:, commit:, failures:)
       ingestor = CveIngestor.new(matcher: @matcher, published_after: watch_from, sync:, commit:)
-      stored = Cve.pluck(:identifier).to_set
-
       files.filter_map do |file|
         raw = @repository.read(commit, file)
-        next unless stored.include?(File.basename(file, ".json")) || @matcher.candidate?(raw)
-
         ingestor.ingest(CveRecord.parse(raw))
       rescue => error
         @logger.error("[cvelist] #{file}: #{error.class}: #{error.message}")

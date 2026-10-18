@@ -44,6 +44,22 @@ class CveRecord
     Array(cna["affected"])
   end
 
+  # Use the same source/version priority before import and after storage.
+  def selected_assessment
+    CvssAssessment.preferred(source_containers.transform_values { |container| assessments(container) })
+  end
+
+  def remotely_exploitable_without_interaction?
+    assessment = selected_assessment
+    assessment && [ assessment.attack_vector, assessment.privileges_required, assessment.user_interaction ] == %w[N N N]
+  end
+
+  def affected_product_names
+    affected.filter_map do |entry|
+      [ entry["product"], entry["vendor"] ].find { |name| name.present? && !%w[n/a unknown].include?(name.to_s.downcase) }
+    end.uniq
+  end
+
   # Reference links of the CNA and CISA containers, without duplicates.
   def references
     source_containers.values.flat_map { |container| Array(container["references"]) }

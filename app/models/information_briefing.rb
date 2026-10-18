@@ -19,7 +19,7 @@ class InformationBriefing
 
   def sections
     ids = external_items.flat_map(&:cve_identifiers)
-    cves = Cve.tracked.where(identifier: ids).index_by(&:identifier)
+    cves = Cve.published.where(identifier: ids).index_by(&:identifier)
     external_items.group_by { |item| item.section(cves) }
   end
 
@@ -63,17 +63,18 @@ class InformationBriefing
     end
 
     def cve_items
-      scope = Cve.tracked.order(date_published: :desc, identifier: :desc)
+      scope = Cve.published.order(date_published: :desc, identifier: :desc)
       selected = @selection.apply(scope, date: :date_published)
       selected.map do |cve|
         analysis = cve.latest_ai_analysis
-        product = cve.product_matches.map(&:product_name).uniq.join("、")
-        title = "#{cve.identifier}：#{product}"
+        snapshot = cve.latest_snapshot
+        product = snapshot && CveRecord.new(snapshot.raw_json).affected_product_names.join("、")
+        title = [ cve.identifier, product.presence ].compact.join("：")
         overview = analysis&.summary_overview.presence
         summary = overview && overview.length <= 60 ? overview : "#{cve.identifier}の脆弱性情報があります。"
         body = { overview:, impact: analysis&.summary_impact, affected: analysis&.summary_affected,
                  mitigation: analysis&.summary_mitigation, judgement: cve.current_judgement,
-                 description: cve.latest_snapshot&.raw_json&.dig("containers", "cna", "descriptions") }
+                 description: snapshot&.raw_json&.dig("containers", "cna", "descriptions") }
         item = { summary:, article_summary: JSON.generate(body), advisory: { "cve_id" => cve.identifier },
                  source: { title:, url: "https://www.cve.org/CVERecord?id=#{cve.identifier}", publisher: "CVE", published_at: cve.date_published.iso8601, kind: "advisory" } }
         [ item, { title:, url: item[:source][:url], fetched_at: @now.iso8601, status: "not_applicable", comments: [], kind: "advisory", partial: false } ]

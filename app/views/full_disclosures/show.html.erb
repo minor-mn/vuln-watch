@@ -1,0 +1,56 @@
+<% content_for :title, "#{@item.title} - Vuln Watch" %>
+
+<div class="space-y-6">
+  <div>
+    <%= link_to "← 一覧", root_path(anchor: "full_disclosure"), class: "text-sm text-sky-700 hover:underline" %>
+    <h1 class="mt-2 text-2xl font-semibold"><%= @item.title %></h1>
+    <p class="mt-2 text-sm text-gray-500">Full Disclosure · 公開 <%= format_time(@item.published_at) %></p>
+    <% if @source_url %><p class="mt-1 text-sm"><%= link_to "配信元の原文", @source_url, class: "text-sky-700 hover:underline", target: "_blank", rel: "noopener noreferrer" %></p><% end %>
+  </div>
+
+  <section class="rounded border border-gray-200 bg-white p-4">
+    <h2 class="mb-3 font-semibold">AV / PR / UI（AI判定・CVSS 3.1基準）</h2>
+    <% if @analysis %>
+      <div class="space-y-6">
+        <% @analysis.assessments.each do |assessment| %>
+          <div>
+            <h3 class="mb-2 text-sm font-semibold"><%= assessment.fetch("subject") %></h3>
+            <table class="min-w-full text-sm">
+              <thead class="text-left text-xs text-gray-500"><tr><th class="py-1 pr-4">項目</th><th class="py-1 pr-4">判定</th><th class="py-1">根拠</th></tr></thead>
+              <tbody>
+                <% FullDisclosureAnalysis::METRICS.each do |metric, definition| %>
+                  <% value = assessment.fetch(definition.fetch(:field)) %>
+                  <% evidence = assessment.fetch("evidence").fetch(metric) %>
+                  <tr class="align-top">
+                    <td class="py-2 pr-4 font-mono"><%= metric %></td>
+                    <td class="py-2 pr-4 font-mono"><%= value == "unknown" ? "不明" : value %></td>
+                    <td class="py-2">
+                      <p><%= evidence.fetch("explanation") %></p>
+                      <% if evidence.fetch("quote").present? %><blockquote class="mt-1 border-l-2 border-gray-300 pl-3 text-gray-600"><%= evidence.fetch("quote") %></blockquote><% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-sm text-gray-500">本文の取得・解析はまだ完了していません。</p>
+    <% end %>
+  </section>
+
+  <section class="rounded border border-gray-200 bg-white p-4">
+    <h2 class="mb-3 font-semibold">本文の和訳</h2>
+    <% if @analysis %>
+      <div class="whitespace-pre-wrap break-words text-sm"><%= @analysis.body_ja %></div>
+    <% else %>
+      <p class="text-sm text-gray-500">和訳はまだ生成されていません。</p>
+    <% end %>
+  </section>
+
+  <section class="rounded border border-gray-200 bg-white p-4">
+    <h2 class="mb-3 font-semibold">原文</h2>
+    <div class="whitespace-pre-wrap break-words text-sm"><%= @item.full_body.presence || @item.body %></div>
+  </section>
+</div>

@@ -1,7 +1,7 @@
 module CvesHelper
   JUDGEMENT_LABELS = {
     "emergency" => "Emergency（緊急）",
-    "non_emergency" => "Matched（該当）",
+    "non_emergency" => "Non-emergency（非緊急）",
     "unknown" => "Unclassified（判定待ち）"
   }.freeze
 
@@ -39,7 +39,7 @@ module CvesHelper
   end
 
   def possible_match_badge
-    tag.span "説明文のみで一致", class: "inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ring-1 ring-inset bg-amber-50 text-amber-800 ring-amber-300"
+    tag.span "メール対象候補（説明文のみ）", class: "inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ring-1 ring-inset bg-amber-50 text-amber-800 ring-amber-300"
   end
 
   def mismatch_badge
@@ -50,8 +50,23 @@ module CvesHelper
     SOURCE_LABELS.fetch(source.to_s, source.to_s)
   end
 
+  def information_source_label(source)
+    source == "slashdot" ? "slashdot" : InformationSources::LABELS.fetch(source)
+  end
+
+  def listing_page_path(page_key, page, anchor:)
+    root_path(request.query_parameters.merge(page_key => page).symbolize_keys.merge(anchor:))
+  end
+
   def assessment_vector(assessment)
     "AV:#{assessment.attack_vector} / PR:#{assessment.privileges_required} / UI:#{assessment.user_interaction}"
+  end
+
+  def full_disclosure_metric_vector(assessment)
+    FullDisclosureAnalysis::METRICS.map do |metric, definition|
+      value = assessment.fetch(definition.fetch(:field))
+      "#{metric}:#{value == 'unknown' ? '不明' : value}"
+    end.join(" / ")
   end
 
   def assessment_origin(source, version)

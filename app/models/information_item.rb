@@ -1,4 +1,5 @@
 class InformationItem < ApplicationRecord
+  has_many :full_disclosure_analyses, dependent: :destroy
   validates :source, inclusion: { in: InformationSources::LABELS.keys - [ "cve" ] }
   validates :url, :title, :published_at, :fetched_at, presence: true
 
@@ -12,6 +13,11 @@ class InformationItem < ApplicationRecord
 
   def reply?
     details["kind"] == "mailing_list_reply"
+  end
+
+  def current_full_disclosure_analysis
+    return unless source == "full_disclosure" && full_body.present?
+    full_disclosure_analyses.find_by(input_hash: FullDisclosureAnalysis.input_hash(self))
   end
 
   def cve_identifiers
