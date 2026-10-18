@@ -3,8 +3,12 @@ class CvesController < ApplicationController
   PAGE_SIZE = 50
 
   def index
+    @selected_sources = InformationSources.select(params[:sources])
+    @information = InformationBriefing.new(sources: @selected_sources)
+    @information_sections = @information.sections
     @sections = SECTIONS.index_with do |result|
       scope = Cve.tracked.where(current_judgement: result)
+      scope = scope.none unless @selected_sources.include?("cve")
       total = scope.count
       total_pages = [ (total.to_f / PAGE_SIZE).ceil, 1 ].max
       page = params["#{result}_page"].to_s.to_i.clamp(1, total_pages)
@@ -16,6 +20,8 @@ class CvesController < ApplicationController
 
       { cves:, total:, page:, total_pages: }
     end
+  rescue ArgumentError => error
+    render plain: error.message, status: :bad_request
   end
 
   def show
