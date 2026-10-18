@@ -1,4 +1,5 @@
 require "net/http"
+require "openssl"
 
 class InformationHttp
   class Error < StandardError
@@ -10,6 +11,10 @@ class InformationHttp
   end
 
   Response = Data.define(:body, :next_url)
+
+  def initialize(transport: Net::HTTP)
+    @transport = transport
+  end
 
   # Callers pass only fixed feed URLs or validated story/message/API URLs.
   # Redirects are deliberately not followed, including for authenticated GitHub calls.
@@ -23,7 +28,10 @@ class InformationHttp
     end
     body = +""
     next_url = nil
-    Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 10, read_timeout: 15, write_timeout: 10) do |http|
+    # Explicitly requested exception for Full Disclosure's feed and message pages.
+    full_disclosure = url == InformationFeeds::FEEDS.fetch("full_disclosure") || InformationFeeds.message_url?(url)
+    verify_mode = full_disclosure ? OpenSSL::SSL::VERIFY_NONE : OpenSSL::SSL::VERIFY_PEER
+    @transport.start(uri.host, uri.port, use_ssl: true, verify_mode:, open_timeout: 10, read_timeout: 15, write_timeout: 10) do |http|
       http.request(Net::HTTP::Get.new(uri, headers)) do |response|
         unless response.is_a?(Net::HTTPSuccess)
           delay = [ response["Retry-After"].to_i, 3600 ].max
