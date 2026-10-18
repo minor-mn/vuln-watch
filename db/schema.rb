@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_10_15_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_18_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -91,6 +91,36 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_15_000001) do
     t.datetime "updated_at", null: false
     t.index ["source_revision_id", "version"], name: "index_cvss_assessments_on_source_revision_id_and_version", unique: true
     t.index ["source_revision_id"], name: "index_cvss_assessments_on_source_revision_id"
+  end
+
+  create_table "information_items", force: :cascade do |t|
+    t.string "source", null: false
+    t.string "url", null: false
+    t.text "title", null: false
+    t.text "body", default: "", null: false
+    t.datetime "published_at", null: false
+    t.datetime "fetched_at", null: false
+    t.text "summary"
+    t.boolean "relevant"
+    t.boolean "listed", default: true, null: false
+    t.string "summary_digest"
+    t.jsonb "details", default: {}, null: false
+    t.jsonb "thread", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["source", "listed", "published_at"], name: "index_information_items_on_source_and_listed_and_published_at"
+    t.index ["source", "url"], name: "index_information_items_on_source_and_url", unique: true
+  end
+
+  create_table "information_source_states", force: :cascade do |t|
+    t.string "source", null: false
+    t.datetime "attempted_at"
+    t.datetime "succeeded_at"
+    t.datetime "retry_at"
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["source"], name: "index_information_source_states_on_source", unique: true
   end
 
   create_table "judgements", force: :cascade do |t|

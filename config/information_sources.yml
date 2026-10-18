@@ -1,0 +1,5 @@
+# true の取得元だけを60分ごとに更新する。変更後はアプリを再起動する。
+cve: true
+github_advisory: true
+full_disclosure: true
+slashdot: true

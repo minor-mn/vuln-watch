@@ -11,5 +11,9 @@ Rails.application.routes.draw do
 
   resources :cves, only: %i[index show]
 
+  namespace :api do
+    resource :briefing, only: :show
+  end
+
   root "cves#index"
 end

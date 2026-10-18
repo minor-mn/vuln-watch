@@ -326,6 +326,7 @@ DEPENDENCIES
   dotenv
   importmap-rails
   json (~> 2.10)
+  nokogiri
   pg (~> 1.1)
   propshaft
   puma (>= 5.0)
