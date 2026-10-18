@@ -26,6 +26,8 @@ slashdot: true
 
 日本語の短い紹介は既存の `OPENAI_API_KEY` / `OPENAI_MODEL` で事前生成します。入力が変わらなければ要約を再利用します。要約未設定・失敗時は元の見出しと警告を返します。Slashdotは要約未作成の間、キーワードで関連投稿を選びます。記事本文はDBに保持し、会話用抜粋は600文字までにします。
 
+Full Disclosureについては、ユーザー指定により公式RSS（`https://seclists.org/rss/fulldisclosure.rss`）と同ホストのFull Disclosure投稿ページだけTLS証明書の検証を省略します。HTTPSは使用し、リダイレクトは追いません。その他の取得元・ホスト・メーリングリストには適用しません。
+
 Slashdotの公開コメントは評価順、Full Disclosureの返信は対象投稿の子孫だけをスレッド順に、最大12件・各1200文字で保管します。引用文・スクリプト・メール定型フッターを除き、取得失敗と一部取得を記録します。CVEとGitHubのコメントは対象外です。
 
 ## 最新情報API
