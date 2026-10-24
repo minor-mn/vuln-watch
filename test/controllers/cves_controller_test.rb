@@ -82,4 +82,63 @@ class CvesControllerTest < ActionDispatch::IntegrationTest
     get "/api/briefing", params: { sources: "cve", hours: 1000 }
     refute response.parsed_body.dig("news", "items").any? { |item| item.dig("advisory", "cve_id") == cve.identifier }
   end
+
+  test "lists the stored mismatch result and removes the badge after assessments agree" do
+    options = {
+      id: "CVE-2026-8124", cna_vectors: [ V31_NETWORK ],
+      cna_updated: "2026-10-01T00:00:00Z",
+      cisa_updated: "2026-10-02T00:00:00Z",
+      cisa_vectors: [ V31_NETWORK.sub("PR:N", "PR:L") ]
+    }
+    cve = ingest(**options).cve
+    assert cve.assessment_mismatch
+
+    get root_path
+    assert_response :success
+    assert_select "tr", text: /#{cve.identifier}/ do
+      assert_select "span", text: "評価不一致", count: 1
+    end
+    assert_select "tr", text: /#{@cve.identifier}/ do
+      assert_select "span", text: "評価不一致", count: 0
+    end
+
+    ingest(**options.merge(updated: "2026-10-03T00:00:00Z",
+      cisa_updated: "2026-10-03T00:00:00Z", cisa_vectors: [ V31_NETWORK ]))
+    refute cve.reload.assessment_mismatch
+
+    get root_path
+    assert_response :success
+    assert_select "tr", text: /#{cve.identifier}/ do
+      assert_select "span", text: "評価不一致", count: 0
+    end
+  end
+
+  test "listing more CVEs does not add assessment queries" do
+    # Warm up schema and rendering before measuring database queries.
+    get root_path
+    before = listing_assessment_queries
+
+    6.times do |index|
+      ingest(id: "CVE-2026-#{8200 + index}",
+        cisa_updated: "2026-10-02T00:00:00Z", cisa_vectors: [ V31_NETWORK ])
+    end
+
+    after = listing_assessment_queries
+    assert_equal before.size, after.size, after.join("\n")
+    assert_operator after.size, :<=, 2, after.join("\n")
+  end
+
+  private
+    def listing_assessment_queries
+      queries = []
+      subscriber = ->(_name, _start, _finish, _id, payload) do
+        sql = payload[:sql]
+        queries << sql if sql.match?(/\bFROM "(?:source_revisions|cvss_assessments)"/i)
+      end
+      ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
+        ActiveRecord::Base.uncached { get root_path }
+      end
+      assert_response :success
+      queries
+    end
 end

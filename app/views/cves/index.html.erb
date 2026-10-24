@@ -39,7 +39,7 @@
                     <div><%= @products_by_cve.fetch(cve.id, []).join(", ").presence || "記載なし" %></div>
                     <div class="mt-1 flex flex-wrap gap-1">
                       <%= possible_match_badge if cve.possible_match? %>
-                      <%= mismatch_badge if cve.assessment_mismatch? %>
+                      <%= mismatch_badge if cve.assessment_mismatch %>
                     </div>
                   </td>
                   <td class="whitespace-nowrap px-3 py-2 font-mono text-xs">
